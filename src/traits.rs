@@ -83,12 +83,6 @@ const _: () = assert!(
     "This crate can only be compiled on little or big endian systems"
 );
 
-pub enum Endian {
-    Native,
-    Little,
-    Big,
-}
-
 #[derive(Debug)]
 pub enum CastError {
     /// Denotes that the size of the target type and the byte slice.
@@ -135,12 +129,7 @@ pub unsafe trait ZoruaField: Sized {
         unsafe { std::slice::from_raw_parts(slf.cast::<u8>(), len) }
     }
 
-    fn as_bytes_mut(&mut self, endian: Endian) -> &mut [u8] {
-        match endian {
-            Endian::Little => self.to_le_mut(),
-            Endian::Big => self.to_be_mut(),
-            Endian::Native => (),
-        }
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
         let len = mem::size_of_val(self);
         let slf: *mut Self = self;
         unsafe { std::slice::from_raw_parts_mut(slf.cast::<u8>(), len) }
@@ -161,18 +150,13 @@ pub unsafe trait ZoruaField: Sized {
         }
     }
 
-    fn try_from_bytes_mut(bytes: &mut [u8], endian: Endian) -> Result<&mut Self, CastError> {
+    fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, CastError> {
         if bytes.len() != mem::size_of::<Self>() {
             Err(CastError::SizeMismatch)
         } else if (bytes.as_ptr() as *const ()).align_offset(mem::align_of::<Self>()) != 0 {
             Err(CastError::AlignmentTooStrict)
         } else {
             let value = unsafe { &mut *(bytes.as_mut_ptr() as *mut Self) };
-            match endian {
-                Endian::Little => value.to_le_mut(),
-                Endian::Big => value.to_be_mut(),
-                Endian::Native => (),
-            }
             Ok(value)
         }
     }
